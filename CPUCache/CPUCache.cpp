@@ -10,6 +10,53 @@
 
 #include "WindowsTime.h"
 
+// Memory accesses and performance
+void Example_0()
+{
+	const int Count = 64 * 1024 * 1024;
+
+	int *pArray1 = new int[Count + 16];
+	int *pArray2 = new int[Count + 16];
+
+	int *pAlignArray1 = (int*)((((int64_t)pArray1) + 64) &(~64));
+	int *pAlignArray2 = (int*)((((int64_t)pArray2) + 64) &(~64));
+
+	printf("pAlignArray1 Addr: 0x%p\n", pAlignArray1);
+	printf("pAlignArray2 Addr: 0x%p\n", pAlignArray2);
+
+	double Start, End;
+	int Total = 0;
+	// Loop 1
+	Start = appSeconds();
+	for (int k = 0; k < Count; k+=(16*4)) // 每次跨越4 * cache line(cacheline=64bytes)
+	{
+		// 访问同一个cache line
+		Total += pAlignArray1[k];
+		Total += pAlignArray1[k+1];
+		Total += pAlignArray1[k+2];
+		Total += pAlignArray1[k+3];
+	}
+
+	End = appSeconds();
+	printf("Loop 1 Cycles: %.9f, Total=%d\n", (float)(End - Start), Total);
+
+	// Loop 2
+	Start = appSeconds();
+	for (int k = 0; k < Count; k += (16*4)) // 每次跨越4 * cache line(cacheline=64bytes)
+	{
+		// 访问不同的cache line
+		Total += pAlignArray2[k];
+		Total += pAlignArray2[k + 16];
+		Total += pAlignArray2[k + 32];
+		Total += pAlignArray2[k + 48];
+	}
+
+	End = appSeconds();
+	printf("Loop 2 Cycles: %.9f, Total=%d \n", (float)(End - Start), Total);
+
+	delete[] pArray1;
+	delete[] pArray2;
+}
 
 // Memory accesses and performance
 void Example_1()
@@ -309,13 +356,14 @@ void main()
 {
 	appInitTiming();
 
+	Example_0();
 	//Example_1();
 	//Example_2();
 	//Example_3();
 	//Example_4();
 	//Example_5();
 	//Example_6();
-	Example_7();
+	//Example_7();
 
 	system("pause");
 }
